@@ -1,0 +1,77 @@
+---
+title: "LA Demographics"
+author: "Julia Ma"
+date: "November 12, 2018"
+output: html_document
+---
+
+Mapping LA Project is useful if you'd like to view demographics given a region/neighborhood. However, what if you'd like to view neighborhoods given demographics? Goal: implement visualization to filter by demographic sections then yield regions/neighborhoods.
+
+# Region and Neighborhoods
+
+```{r}
+library(rvest)
+library(dplyr)
+mainn <- read_html("http://maps.latimes.com/neighborhoods/neighborhood/list/")
+
+# region_links <- mainn %>% 
+#   html_nodes("td:nth-child(2) a") %>% 
+#   html_attr("href")
+# 
+# neigborhood_links <- mainn %>% 
+#   html_nodes("td:nth-child(1) a") %>% 
+#   html_attr("href")
+
+links <- mainn %>% 
+  html_nodes(".datagrid a") %>% 
+  html_attr("href")
+
+links <- paste0("http://maps.latimes.com", links)
+
+links <- as.data.frame(matrix(links, ncol = 2, byrow = T), 
+                       stringsAsFactors = F)
+names(links) <- c("Neighborhood", "Region")
+
+# str(links)
+n_neighborhood <- length(unique(links[,1])) #272 unique neighborhoods
+
+```
+
+
+# Demographics
+
+## Population
+
+```{r}
+neighborhoods <- data.frame(NULL)
+
+fcn_popu <- function(website){
+  website <- read_html(website)
+  
+  name <- website %>% 
+    html_nodes("h1") %>% 
+    html_text("href")
+
+  population <- website %>%
+    html_nodes(":nth-child(4) li:nth-child(1) strong") %>%
+    html_text("href") %>%
+    gsub(",", "", .) %>%
+    as.numeric(.)
+
+  sqmi <- website %>%
+    html_nodes(":nth-child(4) li:nth-child(2) strong") %>%
+    html_text("href") %>%
+    as.numeric(.)
+
+  density <- population/sqmi
+
+  return(c(name, population, sqmi, density))
+}
+
+do.call(rbind, lapply(links[1:30,1], fcn_popu))
+
+demo_popu <- as.data.frame(do.call(rbind, lapply(links[2,1], fcn_popu)), ncol = 4)
+demo_popu <- demo_popu[,1:4]
+
+#View webscraped data
+```
